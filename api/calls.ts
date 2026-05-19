@@ -13,10 +13,11 @@ export default async function handler(
   try {
     const body = req.body
 
-    console.log(body)
+    console.log('Call trigger payload:', body)
 
     return res.status(200).json({
       success: true,
+      message: 'API route working',
     })
   } catch (error) {
     console.error(error)
