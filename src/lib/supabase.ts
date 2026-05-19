@@ -439,7 +439,7 @@ export async function triggerCall(
 }> {
   try {
     const response = await fetch(
-      '/api/calls/trigger',
+      '/api/calls',
       {
         method: 'POST',
         headers: {
