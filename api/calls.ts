@@ -14,7 +14,7 @@ import type {
     req: VercelRequest,
     res: VercelResponse
   ) {
-    // Allow only POST
+    // Allow only POST requests
     if (req.method !== 'POST') {
       return res.status(405).json({
         error: 'Method not allowed',
@@ -32,7 +32,10 @@ import type {
         })
       }
   
-      console.log('Received call_id:', call_id)
+      console.log(
+        'Received call_id:',
+        call_id
+      )
   
       // Fetch call details from Supabase
       const {
@@ -69,7 +72,7 @@ import type {
   
       // Trigger Bolna API
       const bolnaResponse = await fetch(
-        'https://api.bolna.ai/v1/call',
+        'https://api.bolna.ai/call',
         {
           method: 'POST',
           headers: {
@@ -79,10 +82,16 @@ import type {
           body: JSON.stringify({
             agent_id:
               process.env.VITE_BOLNA_AGENT_ID,
-            phone_number: call.phone_number,
-            customer_name: call.borrower_name,
-            metadata: {
-              call_id: call.id,
+  
+            recipient_phone_number: `+91${call.phone_number}`,
+  
+            user_data: {
+              customer_name:
+                call.borrower_name,
+              loan_account:
+                call.loan_account,
+              overdue_amount:
+                call.overdue_amount,
             },
           }),
         }
