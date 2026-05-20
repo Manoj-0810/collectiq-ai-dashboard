@@ -14,6 +14,14 @@ Rather than relying on tedious manual dialers, collections managers can upload o
 
 ---
 
+## 📺 Live Action Demo
+
+![CollectIQ Live Operations Dashboard](dashboard_preview.png)
+
+*The executive operational control center showing live dialing metrics, campaigns, hourly call volume breakdown, and real-time outcome streams.*
+
+---
+
 ## 📐 System Architecture & Flow
 
 CollectIQ uses a highly responsive, modern, event-driven architecture. Supabase serves as both the relational data storage engine (PostgreSQL) and the messaging pipeline (via PostgreSQL WAL Replication WebSockets) to feed live updates directly to the react-based dashboard without requiring manual polling.
@@ -45,7 +53,7 @@ graph TD
 1. **List Upload:** The collections manager uploads a `.csv` list of delinquent accounts. CollectIQ parses and auto-aligns column headers, saving the borrower profiles and staging a campaign in a `draft` status.
 2. **Campaign Launch:** The manager clicks "Run Campaign," changing the campaign status to `running`. The dashboard invokes the serverless functions to queue calls.
 3. **AI Dispatch:** Vercel serverless functions handle rate-limiting and sequentially dispatch call instructions to the Bolna Voice AI Engine with user-specific context (Borrower Name, Due Date, Overdue Amount, Preferred Language).
-4. **Outbound Call & AI Dialogue:** The Bolna Agent dials the borrower. Using context-aware speech-to-text, natural language understanding, and ultra-low latency text-to-speech, it executes a customized collection script (available in English, Hindi, or HInglish).
+4. **AI Dialogue:** The Bolna Agent dials the borrower and executes a customized collection script (available in English, Hindi, or Hinglish).
 5. **Real-time Webhook & Telemetry:** Upon hang-up, Bolna instantly forwards call statistics, outcomes (PTP confirmed, disputed, callback, etc.), and the complete conversation transcript to the `/api/webhook/bolna` endpoint. 
 6. **Supabase Realtime Feed:** The webhook updates the PostgreSQL database. Supabase immediately broadcasts the transaction delta over WebSockets, allowing the React UI to animate telemetry metrics, tables, and progress charts in real time.
 
@@ -57,48 +65,43 @@ The database runs on Supabase (PostgreSQL), utilizing foreign-key relationships,
 
 ```mermaid
 erDiagram
-    borrowers {
-        uuid id PK
-        text name "delinquent borrower name"
-        text phone "10-digit mobile number"
-        text loan_account "unique account number"
-        numeric overdue_amount "pending principal + interest"
-        date due_date "date payment was expected"
-        text language "hindi | english | hinglish"
-        text bucket "0-30 | 31-60 | 61-90 | 90+"
-        timestamptz created_at
-    }
     campaigns {
         uuid id PK
-        text name "custom campaign title"
+        text campaign_name "custom campaign title"
         text status "draft | running | paused | completed"
-        integer total_accounts "number of borrowers"
+        integer total_customers "number of borrowers"
+        integer completed_calls "completed phone calls"
+        integer ptp_count "promise-to-pay count"
+        numeric total_ptp_amount "sum of promised payments"
+        integer connect_rate "connection percentage"
         timestamptz created_at
     }
     calls {
         uuid id PK
         uuid campaign_id FK "links to campaigns"
-        uuid borrower_id FK "links to borrowers"
-        text bolna_call_id "reference from Bolna API"
-        text status "queued | calling | completed | failed | no_answer"
-        text outcome "ptp_confirmed | disputed | callback_requested | escalate | no_answer | failed"
+        text borrower_name "delinquent borrower name"
+        text phone_number "10-digit mobile number"
+        text loan_account "unique account number"
+        numeric overdue_amount "pending principal + interest"
+        date due_date "expected date of payment"
+        text call_status "queued | initiated | calling | completed | failed | no_answer"
+        text call_outcome "ptp_confirmed | disputed | callback_requested | escalate | no_answer | failed"
         date ptp_date "committed date for payment"
         numeric ptp_amount "promised payment amount"
         text transcript "complete dialogue text"
+        text summary "AI generated conversation summary"
+        text sentiment "cooperative | frustrated | neutral"
         integer duration_seconds "talk time in seconds"
-        started_at timestamptz
-        ended_at timestamptz
-        created_at timestamptz
+        text bolna_call_id "reference from Bolna API"
+        timestamptz created_at
     }
     campaigns ||--o{ calls : contains
-    borrowers ||--o{ calls : targets
 ```
 
 ### schema.sql Breakdown
-* **`borrowers`**: Delinquent account metadata. Built-in CHECK constraints enforce that delinquent buckets only fall into standard lending segments (`0-30`, `31-60`, `61-90`, `90+` days past due).
-* **`campaigns`**: Collection run batches. Campaign progress moves through an explicit state machine: `draft` ➡️ `running` ➡️ `paused` ➡️ `completed`.
-* **`calls`**: Transactional records for individual dials. Retains highly detailed metadata including call duration, outcome categorization, PTP (Promise-to-Pay) targets, and complete dialog transcripts.
-* **`campaign_metrics` View**: A high-speed SQL view that dynamically aggregates analytics per campaign (calculating connect rates, PTP conversion ratios, average durations, and overall cash collection projections) to deliver sub-millisecond API response times for the front-end charts.
+* **`campaigns`**: Collection run batches. Campaign metrics are dynamically updated as calls execute. Campaign progress moves through an explicit state machine: `draft` ➡️ `running` ➡️ `paused` ➡️ `completed`.
+* **`calls`**: Unified call and borrower record sheet. Retains customer details alongside call metadata including call duration, outcome categorization, sentiment analysis, PTP (Promise-to-Pay) targets, and complete dialog transcripts.
+* **`campaign_metrics` View**: A high-speed SQL view that dynamically aggregates analytics per campaign (calculating connect rates, PTP conversion ratios, average durations, and overall cash collection projections) to deliver sub-millisecond response times for the front-end dashboard KPI cards.
 
 ---
 
@@ -149,22 +152,22 @@ npm install
 Create a `.env` or `.env.local` file inside the `app/` directory (or the root project directory) and populate it with your credentials:
 
 ```env
-# Supabase Configuration
+# Supabase Configuration (Exposed to the browser bundle)
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI...
 
-# Server-Side Keys (Required for Serverless API Functions)
+# Server-Side Keys (Required for Serverless API Functions, NEVER prefixed with VITE_)
 SUPABASE_URL=https://your-project-id.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI...
 
-# Bolna Voice AI Credentials
-VITE_BOLNA_API_KEY=bn-your-bolna-api-key
-VITE_BOLNA_AGENT_ID=your-voice-agent-uuid
+# Secure Bolna Voice AI Credentials (Kept strictly on Vercel Serverless side for security)
+BOLNA_API_KEY=bn-your-bolna-api-key
+BOLNA_AGENT_ID=your-voice-agent-uuid
 BOLNA_WEBHOOK_SECRET=your-shared-webhook-secret-token
 ```
 
-> [!TIP]
-> **Crash Prevention Feature:** CollectIQ includes an automated server-side environment loader. If you start the app inside standard development runners, Node will automatically parse `.env` or `.env.local` from the workspace root or the `app/` directory, eliminating standard `process.env` undefined errors.
+> [!WARNING]
+> **API Key Protection:** To comply with security best practices, the Bolna API Credentials (`BOLNA_API_KEY` and `BOLNA_AGENT_ID`) are configured **exclusively** on the server side (accessed inside `/api/*` routes) and are never exposed to the React browser client-side bundle.
 
 ### 4. Start the Dev Server
 Launch Vercel CLI or local Vite runner to start developing:
@@ -244,7 +247,7 @@ Standardized webhook hook called by the Bolna Engine when a call terminates. Val
   ```json
   {
     "call_id": "bolna-call-uuid-12345",
-    "outcome": "PTP_CONFIRMED",
+    "outcome": "ptp_confirmed",
     "transcript": "Agent: Namaste Rajesh ji, aapka ₹45,000 ka loan outstanding hai... Borrower: Haan haan main parso pay kar dunga...",
     "summary": "Borrower promised to pay outstanding ₹45,000 on 2026-05-22.",
     "ptp_amount": 45000,
@@ -272,7 +275,7 @@ The Bolna Voice AI categorizes conversation results based on user speech-to-text
 | `callback_requested` | **Callback** | Borrower asks to be called at another time (e.g. busy, driving, sleeping). | Reschedules dialer queue to user-preferred window. |
 | `escalate` | **Escalated** | Conversation highlights highly emotional speech, complex queries, or refusal to pay. | Transfers customer file to an experienced human collections specialist. |
 | `no_answer` | **No Answer** | Phone rings out completely, user busy, or mobile switched off. | Triggers cool-down period before adding to automatic retry queue. |
-| `failed` | **Failed** | Technical dialing error, network failure, or empty call state. | logs error event and cues immediate failover recovery. |
+| `failed` | **Failed** | Technical dialing error, network failure, or empty call state. | Logs error event and cues immediate failover recovery. |
 
 ---
 
@@ -300,7 +303,7 @@ Sneha Gupta,9876512345,LN2024004,67000,2026-11-05,english,31-60
 
 ## 🔮 Next Phase Roadmap
 
-- **🛡️ RBI-Compliant Audit Ledger:** Implement immutable, cryptographically verifiable logs documenting every single agent-borrower phone interaction, tracking caller consent, talk time, and outcome markers. Exports regulatory-compliant PDFs for RBI compliance inspections (incorporating 7-year records preservation policies).
+- **🛡️ Immutable Audit Ledger with Cryptographic Hash Chaining:** Implement a compliance audit ledger employing SHA-256 state-chaining to ensure tamper-proof consent logging per NBFC regulatory guidelines, exportable as certified PDFs for seamless RBI audit verification (incorporating 7-year record retention protocols).
 - **🔁 Automatic Multi-Dial Retry Engine:** Configurable retry schedules (maximum 3 calls with exponential backoff thresholds) restricting dials to regulatory-compliant hours (e.g., 9:00 AM – 7:00 PM).
 - **💬 Auto-Generated WhatsApp Confirmations:** Triggers customized WhatsApp messages containing official payment gateways and receipt confirmations immediately following a successful Promise-to-Pay (PTP) call.
 

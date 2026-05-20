@@ -1,7 +1,7 @@
 import type { Borrower } from '@/types';
 
-const BOLNA_API_KEY = import.meta.env.VITE_BOLNA_API_KEY || '';
-const BOLNA_AGENT_ID = import.meta.env.VITE_BOLNA_AGENT_ID || '';
+const BOLNA_API_KEY = '';
+const BOLNA_AGENT_ID = '';
 const BOLNA_API_URL = 'https://api.bolna.dev/call';
 
 interface BolnaCallRequest {

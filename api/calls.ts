@@ -98,12 +98,12 @@ import type {
   
       console.log(
         'Bolna API Key exists:',
-        !!process.env.VITE_BOLNA_API_KEY
+        !!process.env.BOLNA_API_KEY
       )
   
       console.log(
         'Bolna Agent ID:',
-        process.env.VITE_BOLNA_AGENT_ID
+        process.env.BOLNA_AGENT_ID
       )
   
       // Trigger Bolna API
@@ -113,11 +113,11 @@ import type {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.VITE_BOLNA_API_KEY}`,
+            Authorization: `Bearer ${process.env.BOLNA_API_KEY}`,
           },
           body: JSON.stringify({
             agent_id:
-              process.env.VITE_BOLNA_AGENT_ID,
+              process.env.BOLNA_AGENT_ID,
   
             recipient_phone_number: `+91${call.phone_number}`,
   

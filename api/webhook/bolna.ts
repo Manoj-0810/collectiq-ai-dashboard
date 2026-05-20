@@ -68,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('calls')
       .update({
         call_status: 'completed',
-        call_outcome: outcome || 'completed',
+        call_outcome: outcome ? outcome.toLowerCase() : 'completed',
         transcript: transcript || '',
         summary: summary || '',
         ptp_amount: ptp_amount || 0,

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Papa from 'papaparse';
 import { Upload, AlertCircle, ArrowLeft, FileSpreadsheet, Check } from 'lucide-react';
 import { UploadZone, UploadProgress } from '@/components/ui/UploadZone';
-import { createCampaign, insertBorrowers, createCalls } from '@/lib/supabase';
+import { createCampaign, createCalls } from '@/lib/supabase';
 import { formatINR } from '@/lib/utils';
 import type { BorrowerRow, Bucket } from '@/types';
 
@@ -113,24 +113,24 @@ export function UploadPage() {
       return;
     }
 
-    setProgress(50);
+    setProgress(60);
 
-    const borrowers = await insertBorrowers(rows);
-    if (borrowers.length === 0) {
-      setErrors(['Failed to insert borrowers']);
+    const calls: any[] = rows.map((row) => ({
+      campaign_id: campaign.id,
+      borrower_name: row.name,
+      phone_number: row.phone,
+      loan_account: row.loan_account,
+      overdue_amount: row.overdue_amount,
+      due_date: row.due_date,
+      call_status: 'queued',
+    }));
+
+    const result = await createCalls(calls);
+    if (result.length === 0) {
+      setErrors(['Failed to create calls in campaign']);
       setStep('preview');
       return;
     }
-
-    setProgress(80);
-
-    const calls: any[] = borrowers.map((borrower) => ({
-      campaign_id: campaign.id,
-      borrower_id: borrower.id,
-      status: 'queued',
-    }));
-
-    await createCalls(calls);
 
     setProgress(100);
 

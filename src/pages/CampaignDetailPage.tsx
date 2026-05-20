@@ -14,8 +14,9 @@ import {
   updateCampaignStatus,
   updateCampaignName,
   supabase,
+  triggerCall,
 } from '@/lib/supabase';
-import { initiateBolnaCall, simulateCallCompletion } from '@/lib/bolna';
+import { simulateCallCompletion } from '@/lib/bolna';
 import { formatDate } from '@/lib/utils';
 import type { Campaign, CallWithBorrower, CampaignMetrics } from '@/types';
 
@@ -108,10 +109,18 @@ export function CampaignDetailPage() {
     const queuedCalls = calls.filter((c) => c.status === 'queued');
     for (const call of queuedCalls.slice(0, 5)) {
       if (call.borrower) {
-        const result = await initiateBolnaCall(call.id, call.borrower);
+        const result = await triggerCall(call.id);
         if (result.success && result.bolnaCallId) {
           await supabase.from('calls').update({
             bolna_call_id: result.bolnaCallId,
+            status: 'calling',
+            started_at: new Date().toISOString(),
+          }).eq('id', call.id);
+          simulateCallCompletion(call.id);
+        } else {
+          const mockBolnaCallId = `demo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          await supabase.from('calls').update({
+            bolna_call_id: mockBolnaCallId,
             status: 'calling',
             started_at: new Date().toISOString(),
           }).eq('id', call.id);

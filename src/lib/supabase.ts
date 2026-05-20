@@ -321,12 +321,12 @@ export async function fetchDashboardMetrics(): Promise<{
   ).length;
 
   const ptpCount = calls.filter(
-    (c: any) => c.call_outcome === 'PTP_CONFIRMED'
+    (c: any) => c.call_outcome && c.call_outcome.toLowerCase() === 'ptp_confirmed'
   ).length;
 
   const ptpAmount = calls
     .filter(
-      (c: any) => c.call_outcome === 'PTP_CONFIRMED'
+      (c: any) => c.call_outcome && c.call_outcome.toLowerCase() === 'ptp_confirmed'
     )
     .reduce(
       (sum: number, c: any) => sum + (c.ptp_amount || 0),
@@ -411,6 +411,10 @@ export async function fetchOutcomeBreakdown(): Promise<
   }
 
   const outcomeColors: Record<string, string> = {
+    ptp_confirmed: '#00E5A0',
+    disputed: '#FF4757',
+    callback_requested: '#F5A623',
+    escalate: '#A78BFA',
     PTP_CONFIRMED: '#00E5A0',
     DISPUTED: '#FF4757',
     CALLBACK_REQUESTED: '#F5A623',
@@ -420,6 +424,10 @@ export async function fetchOutcomeBreakdown(): Promise<
   };
 
   const outcomeLabels: Record<string, string> = {
+    ptp_confirmed: 'PTP Confirmed',
+    disputed: 'Disputed',
+    callback_requested: 'Callback',
+    escalate: 'Escalated',
     PTP_CONFIRMED: 'PTP Confirmed',
     DISPUTED: 'Disputed',
     CALLBACK_REQUESTED: 'Callback',

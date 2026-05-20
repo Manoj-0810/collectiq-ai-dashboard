@@ -70,12 +70,12 @@ export default async function handler(
           'Content-Type':
             'application/json',
 
-          Authorization: `Bearer ${process.env.VITE_BOLNA_API_KEY}`,
+          Authorization: `Bearer ${process.env.BOLNA_API_KEY}`,
         },
 
         body: JSON.stringify({
           agent_id:
-            process.env.VITE_BOLNA_AGENT_ID,
+            process.env.BOLNA_AGENT_ID,
 
           recipient_phone_number: `+91${phone_number}`,
 
@@ -101,8 +101,12 @@ export default async function handler(
     const text = await response.text();
 
     console.log('Bolna raw response:', text);
-    const bolnaData =
-      await response.json()
+    let bolnaData: any = {};
+    try {
+      bolnaData = JSON.parse(text);
+    } catch (e) {
+      console.error('Failed to parse Bolna response JSON:', e);
+    }
 
     console.log(
       'Bolna response:',
