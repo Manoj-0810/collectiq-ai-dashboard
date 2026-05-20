@@ -4,9 +4,9 @@ import type {
   } from '@vercel/node'
   
   import { createClient } from '@supabase/supabase-js'
-  
+  console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
   const supabase = createClient(
-    process.env.VITE_SUPABASE_URL || '',
+    process.env.SUPABASE_URL || '',
     process.env.SUPABASE_SERVICE_ROLE_KEY || ''
   )
   

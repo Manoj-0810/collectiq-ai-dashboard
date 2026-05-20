@@ -36,3 +36,5 @@ dist-ssr
 
 # Temp files
 *.sw?
+.vercel
+.env*.local

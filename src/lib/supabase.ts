@@ -179,18 +179,18 @@ export async function fetchCalls(
 ): Promise<CallWithBorrower[]> {
   let query = supabase
     .from('calls')
-    .select('*, borrower:borrowers(*)');
+    .select('*');
 
   if (campaignId) {
     query = query.eq('campaign_id', campaignId);
   }
 
   if (filters?.outcome && filters.outcome !== 'all') {
-    query = query.eq('outcome', filters.outcome);
+    query = query.eq('call_outcome', filters.outcome);
   }
 
   if (filters?.status && filters.status !== 'all') {
-    query = query.eq('status', filters.status);
+    query = query.eq('call_status', filters.status);
   }
 
   const { data, error } = await query.order('created_at', {
@@ -202,7 +202,17 @@ export async function fetchCalls(
     return [];
   }
 
-  let calls = data || [];
+  let calls = (data || []).map((call: any) => ({
+    ...call,
+
+    borrower: {
+      name: call.borrower_name,
+      phone: call.phone_number,
+      loan_account: call.loan_account,
+      overdue_amount: call.overdue_amount,
+      due_date: call.due_date,
+    },
+  }));
 
   // Client-side search
   if (filters?.search) {
@@ -223,7 +233,7 @@ export async function fetchCall(
 ): Promise<CallWithBorrower | null> {
   const { data, error } = await supabase
     .from('calls')
-    .select('*, borrower:borrowers(*)')
+    .select('*')
     .eq('id', id)
     .single();
 
@@ -232,7 +242,17 @@ export async function fetchCall(
     return null;
   }
 
-  return data;
+  return {
+    ...data,
+
+    borrower: {
+      name: data.borrower_name,
+      phone: data.phone_number,
+      loan_account: data.loan_account,
+      overdue_amount: data.overdue_amount,
+      due_date: data.due_date,
+    },
+  };
 }
 
 export async function updateCallStatus(
@@ -277,7 +297,6 @@ export async function fetchDashboardMetrics(): Promise<{
   connectRate: number;
   ptpRate: number;
 }> {
-  // Get all calls
   const { data: calls, error } = await supabase
     .from('calls')
     .select('*');
@@ -345,7 +364,6 @@ export async function fetchCallVolumeByHour(): Promise<
 
   const hourCounts: Record<string, number> = {};
 
-  // Initialize all hours from 9 AM to 8 PM
   for (let i = 9; i <= 20; i++) {
     const hour = `${i % 12 || 12} ${
       i < 12 ? 'AM' : 'PM'
@@ -480,7 +498,6 @@ export async function handleBolnaWebhook(payload: {
   };
 }): Promise<boolean> {
   try {
-    // Find the call by bolna_call_id
     const { data: callData, error: findError } =
       await supabase
         .from('calls')
@@ -500,7 +517,6 @@ export async function handleBolnaWebhook(payload: {
       return false;
     }
 
-    // Update the call
     const { error: updateError } =
       await supabase
         .from('calls')
