@@ -5,8 +5,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 ) 
 export default async function handler(
-  req: any,
-  res: any
+  req: { method: string; body: { borrower_name: string; phone_number: string; overdue_amount: number; due_date: string; loan_account: string; language?: string; call_id: string } },
+  res: { status: (code: number) => { json: (body: unknown) => void } }
 ) {
   if (req.method !== 'POST') {
     return res.status(405).json({
@@ -88,14 +88,14 @@ export default async function handler(
       success: true,
       bolna: bolnaData,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(
       'Trigger call error:',
       error
     )
 
     return res.status(500).json({
-      error: error.message,
+      error: error instanceof Error ? error.message : 'An unknown error occurred',
     })
   }
 }
