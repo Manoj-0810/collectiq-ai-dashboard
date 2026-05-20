@@ -4,6 +4,42 @@ import type {
   } from '@vercel/node'
   
   import { createClient } from '@supabase/supabase-js'
+  import fs from 'fs'
+  import path from 'path'
+
+  if (!process.env.SUPABASE_URL) {
+    const cwd = process.cwd();
+    const candidates = [
+      path.join(cwd, '.env.local'),
+      path.join(cwd, '.env'),
+      path.join(cwd, 'app', '.env.local'),
+      path.join(cwd, 'app', '.env'),
+    ];
+    for (const p of candidates) {
+      try {
+        if (fs.existsSync(p)) {
+          const content = fs.readFileSync(p, 'utf8');
+          for (const line of content.split(/\r?\n/)) {
+            const trimmed = line.trim();
+            if (trimmed && !trimmed.startsWith('#')) {
+              const parts = trimmed.split('=');
+              if (parts.length >= 2) {
+                const key = parts[0].trim();
+                const val = parts.slice(1).join('=').trim().replace(/^['"]|['"]$/g, '');
+                if (!process.env[key]) {
+                  process.env[key] = val;
+                }
+              }
+            }
+          }
+          if (process.env.SUPABASE_URL) {
+            break;
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
   console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
   const supabase = createClient(
     process.env.SUPABASE_URL || '',

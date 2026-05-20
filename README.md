@@ -1,221 +1,311 @@
-# CollectIQ
+# 🚀 CollectIQ — AI-Powered Voice Collections Dashboard
 
-**CollectIQ** is an AI-powered voice collections dashboard for NBFCs (Non-Banking Financial Companies) and digital lending companies. It serves as the operational control center around a Bolna Voice AI agent — collections managers upload overdue borrower lists (CSV), trigger automated calling campaigns, monitor outcomes in real time, and review call transcripts, all from one interface. Built for operations teams who need to recover money efficiently, not win design awards.
+[![React 19](https://img.shields.io/badge/React-19-blue.svg?logo=react&logoColor=white)](https://react.dev)
+[![TypeScript 5.x](https://img.shields.io/badge/TypeScript-5.x-blue.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite v7](https://img.shields.io/badge/Vite-v7-646CFF.svg?logo=vite&logoColor=white)](https://vite.dev)
+[![Tailwind CSS v3](https://img.shields.io/badge/Tailwind_CSS-v3-38B2AC.svg?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Realtime-green.svg?logo=supabase&logoColor=white)](https://supabase.com/)
+[![Vercel Serverless](https://img.shields.io/badge/Vercel-Serverless%20Functions-black.svg?logo=vercel&logoColor=white)](https://vercel.com/)
+[![Bolna AI](https://img.shields.io/badge/Bolna%20AI-Voice%20Agents-orange.svg)](https://bolna.ai/)
 
----
+**CollectIQ** is an enterprise-grade operational control center and analytics dashboard designed specifically for Non-Banking Financial Companies (NBFCs), fintechs, and digital lenders. It bridges the gap between collections management and state-of-the-art conversational voice AI, orchestrating automated outbound calling campaigns through **Bolna AI Agents** and providing real-time telemetry, conversational insights, and transaction tracking.
 
-## Architecture
-
-```
-+-------------+     +----------------+     +------------------+
-|   CSV Upload | --> |   Supabase DB  | --> |   Bolna API      |
-|   (/upload)  |     |   (PostgreSQL) |     |   (Voice Agent)  |
-+-------------+     +----------------+     +------------------+
-                           ^                         |
-                           |                         v
-                    +-------------+     +------------------+
-                    |   Realtime  |     |   Borrower Phone |
-                    |   (WebSocket)|    |   (Voice Call)   |
-                    +-------------+     +------------------+
-                           ^
-                           |
-                    +-------------+
-                    |  Webhook    |
-                    |  (/api/     |
-                    |  webhook/   |
-                    |  bolna)     |
-                    +-------------+
-                           |
-                           v
-                    +------------------+
-                    |   Dashboard UI   |
-                    |   (React +       |
-                    |   Realtime Sub)  |
-                    +------------------+
-```
-
-**Flow:**
-1. Collections manager uploads CSV → Borrowers inserted into Supabase
-2. Campaign created → Call records queued in Supabase
-3. Manager clicks "Run Campaign" → Bolna API triggered per call
-4. Bolna Voice Agent calls borrower → Conversation happens
-5. Call ends → Bolna POSTs webhook to `/api/webhook/bolna`
-6. Webhook updates call record in Supabase
-7. Supabase Realtime pushes update to UI → Live status change
+Rather than relying on tedious manual dialers, collections managers can upload overdue borrower lists (CSV), launch targeted automated voice campaigns, monitor progress live, and drill down into AI-transcribed conversations—recovering outstanding dues quickly, transparently, and at scale.
 
 ---
 
-## Local Setup
+## 📐 System Architecture & Flow
 
+CollectIQ uses a highly responsive, modern, event-driven architecture. Supabase serves as both the relational data storage engine (PostgreSQL) and the messaging pipeline (via PostgreSQL WAL Replication WebSockets) to feed live updates directly to the react-based dashboard without requiring manual polling.
+
+```mermaid
+graph TD
+    A[Collections Manager] -- 1. Uploads Borrower CSV --> B[React Dashboard]
+    B -- 2. Inserts Records --> C[(Supabase DB)]
+    A -- 3. Launches Calling Campaign --> B
+    B -- 4. POST /api/calls --> D[Vercel Serverless Function]
+    D -- 5. Triggers Voice Dialing --> E[Bolna Voice AI Engine]
+    E -- 6. Outbound Phone Call --> F[Borrower Mobile]
+    F -- 7. Interactive Conversation --> E
+    E -- 8. Returns Call ID --> D
+    D -- 9. Updates Call Status to 'initiated' --> C
+    F -- 10. Call Disconnects --> E
+    E -- 11. POST /api/webhook/bolna --> G[Vercel Webhook Handler]
+    G -- 12. Updates Status, Transcript & Outcomes --> C
+    C -- 13. Realtime Broadcast --> B
+    B -- 14. Displays Live Telemetry & Insights --> A
+
+    style C fill:#10B981,stroke:#333,stroke-width:2px,color:#fff
+    style E fill:#F97316,stroke:#333,stroke-width:2px,color:#fff
+    style D fill:#6366F1,stroke:#333,stroke-width:2px,color:#fff
+    style G fill:#6366F1,stroke:#333,stroke-width:2px,color:#fff
+```
+
+### End-to-End Operational Lifecycle:
+1. **List Upload:** The collections manager uploads a `.csv` list of delinquent accounts. CollectIQ parses and auto-aligns column headers, saving the borrower profiles and staging a campaign in a `draft` status.
+2. **Campaign Launch:** The manager clicks "Run Campaign," changing the campaign status to `running`. The dashboard invokes the serverless functions to queue calls.
+3. **AI Dispatch:** Vercel serverless functions handle rate-limiting and sequentially dispatch call instructions to the Bolna Voice AI Engine with user-specific context (Borrower Name, Due Date, Overdue Amount, Preferred Language).
+4. **Outbound Call & AI Dialogue:** The Bolna Agent dials the borrower. Using context-aware speech-to-text, natural language understanding, and ultra-low latency text-to-speech, it executes a customized collection script (available in English, Hindi, or HInglish).
+5. **Real-time Webhook & Telemetry:** Upon hang-up, Bolna instantly forwards call statistics, outcomes (PTP confirmed, disputed, callback, etc.), and the complete conversation transcript to the `/api/webhook/bolna` endpoint. 
+6. **Supabase Realtime Feed:** The webhook updates the PostgreSQL database. Supabase immediately broadcasts the transaction delta over WebSockets, allowing the React UI to animate telemetry metrics, tables, and progress charts in real time.
+
+---
+
+## 🗄️ Database Architecture (PostgreSQL Schema)
+
+The database runs on Supabase (PostgreSQL), utilizing foreign-key relationships, strict check constraints to ensure data sanitization, and database views for fast aggregate query executions.
+
+```mermaid
+erDiagram
+    borrowers {
+        uuid id PK
+        text name "delinquent borrower name"
+        text phone "10-digit mobile number"
+        text loan_account "unique account number"
+        numeric overdue_amount "pending principal + interest"
+        date due_date "date payment was expected"
+        text language "hindi | english | hinglish"
+        text bucket "0-30 | 31-60 | 61-90 | 90+"
+        timestamptz created_at
+    }
+    campaigns {
+        uuid id PK
+        text name "custom campaign title"
+        text status "draft | running | paused | completed"
+        integer total_accounts "number of borrowers"
+        timestamptz created_at
+    }
+    calls {
+        uuid id PK
+        uuid campaign_id FK "links to campaigns"
+        uuid borrower_id FK "links to borrowers"
+        text bolna_call_id "reference from Bolna API"
+        text status "queued | calling | completed | failed | no_answer"
+        text outcome "ptp_confirmed | disputed | callback_requested | escalate | no_answer | failed"
+        date ptp_date "committed date for payment"
+        numeric ptp_amount "promised payment amount"
+        text transcript "complete dialogue text"
+        integer duration_seconds "talk time in seconds"
+        started_at timestamptz
+        ended_at timestamptz
+        created_at timestamptz
+    }
+    campaigns ||--o{ calls : contains
+    borrowers ||--o{ calls : targets
+```
+
+### schema.sql Breakdown
+* **`borrowers`**: Delinquent account metadata. Built-in CHECK constraints enforce that delinquent buckets only fall into standard lending segments (`0-30`, `31-60`, `61-90`, `90+` days past due).
+* **`campaigns`**: Collection run batches. Campaign progress moves through an explicit state machine: `draft` ➡️ `running` ➡️ `paused` ➡️ `completed`.
+* **`calls`**: Transactional records for individual dials. Retains highly detailed metadata including call duration, outcome categorization, PTP (Promise-to-Pay) targets, and complete dialog transcripts.
+* **`campaign_metrics` View**: A high-speed SQL view that dynamically aggregates analytics per campaign (calculating connect rates, PTP conversion ratios, average durations, and overall cash collection projections) to deliver sub-millisecond API response times for the front-end charts.
+
+---
+
+## ✨ Features
+
+- **🚀 Live Campaign Control Center:** Launch, pause, and monitor automated outbound voice agent dialers in real time with visual status transitions and instant UI updates.
+- **📊 Real-time Operations Dashboard:** Live visual tickers of metrics (PTP Rate, Connection Rate, Total PTP Amount Promised, Call Volume by Hour, and Outcome Breakdown charts) powered by Supabase WebSockets.
+- **💬 Conversational Deep-Dives:** Complete speech-to-text transcript reviews for completed calls, highlighting structural markers like Promise-to-Pay (PTP) agreements, disputes, escalations, or request callbacks.
+- **📁 Smart CSV Processing & Importer:** Drag-and-drop CSV upload zone with an intelligent fuzzy column-matching engine (e.g., auto-maps `borrower_name` or `mobile` to schema columns) and structural data preview tables prior to ingestion.
+- **🎨 Premium Visual Experience:** Tailored dark-mode UI with sleek glassmorphism panels, harmonious emerald-and-violet-accented color palettes, custom chart systems using Recharts, and custom animations.
+- **⚙️ Seamless Local Environment Injection:** Embedded server-side loaders that automatically locate and parse environment files to prevent runtime environment variable crashes.
+
+---
+
+## ⚡ Tech Stack
+
+| Layer | Technology | Description |
+|-------|------------|-------------|
+| **Frontend Framework** | React 19 + TypeScript | High-performance, strictly typed rendering and state architecture. |
+| **Asset Builder** | Vite v7 | Ultra-fast next-gen build toolchain and development server. |
+| **Styling & CSS** | Tailwind CSS v3 + CSS Variables | Harmonized design system leveraging clean utility classes and dark-theme configurations. |
+| **Backend & APIs** | Vercel Serverless Functions | Highly scalable Node.js API handlers for secure API proxying and webhook integrations. |
+| **Database** | Supabase (PostgreSQL) | Fully relational PostgreSQL database, real-time replication subscription engine, and robust security policies. |
+| **Parser Engine** | PapaParse | High-throughput browser-based client-side CSV parsing. |
+| **Telemetry & Visualization** | Recharts | Responsive SVG charts mapping chronological dial volumes and categorical distributions. |
+| **Icons & Typography** | Lucide React + Google Fonts | Clean vector iconography matched with *Outfit* (headings) and *Fira Code* (telemetry) fonts. |
+
+---
+
+## 🛠️ Local Installation & Setup
+
+Ensure you have **Node.js 20+** and **npm 10+** installed before proceeding.
+
+### 1. Ingest Repository and Install Dependencies
+Clone the repository and install all node packages:
 ```bash
-# 1. Clone and install
-cd collectiq && npm install
+git clone https://github.com/your-username/collectiq-dashboard.git
+cd collectiq-dashboard/app
+npm install
+```
 
-# 2. Set up Supabase
-#    - Create project at https://supabase.com
-#    - Run `supabase/schema.sql` in SQL Editor
-#    - Copy project URL and anon key
+### 2. Set Up Supabase Database
+1. Create a free project at [Supabase](https://supabase.com).
+2. Go to the **SQL Editor** in your Supabase Dashboard.
+3. Paste the contents of `supabase/schema.sql` into the editor and click **Run**. This initializes tables, views, Row-Level Security (RLS) policies, and enables the real-time WebSocket replication filter.
 
-# 3. Configure environment
-cp .env.local.example .env.local
-#    - Fill in your Supabase URL and keys
+### 3. Environment Variable Settings
+Create a `.env` or `.env.local` file inside the `app/` directory (or the root project directory) and populate it with your credentials:
 
-# 4. Start dev server
+```env
+# Supabase Configuration
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI...
+
+# Server-Side Keys (Required for Serverless API Functions)
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI...
+
+# Bolna Voice AI Credentials
+VITE_BOLNA_API_KEY=bn-your-bolna-api-key
+VITE_BOLNA_AGENT_ID=your-voice-agent-uuid
+BOLNA_WEBHOOK_SECRET=your-shared-webhook-secret-token
+```
+
+> [!TIP]
+> **Crash Prevention Feature:** CollectIQ includes an automated server-side environment loader. If you start the app inside standard development runners, Node will automatically parse `.env` or `.env.local` from the workspace root or the `app/` directory, eliminating standard `process.env` undefined errors.
+
+### 4. Start the Dev Server
+Launch Vercel CLI or local Vite runner to start developing:
+```bash
+# Using Vercel CLI (highly recommended to test API endpoints locally)
+vercel dev
+
+# Or start using standard Vite (Vite runs on port 3000 as configured in vite.config.ts)
 npm run dev
 ```
 
-**Dependencies:** Node.js 20+, npm 10+
-
 ---
 
-## Webhook Setup
+## 🔗 Local Webhook Tunneling (Receiving Calls Locally)
 
-For local development, you need a public URL that Bolna can reach:
+To receive real-time webhook callback notifications from the Bolna Voice engine on your local development machine, you must expose your local port via a secure tunnel.
 
 ```bash
-# 1. Install ngrok
+# 1. Install Ngrok globally
 npm install -g ngrok
 
-# 2. Start your dev server (runs on :5173)
-npm run dev
+# 2. Expose your Vercel dev server port (default: 3000)
+ngrok http 3000
 
-# 3. In another terminal, expose it publicly
-ngrok http 5173
+# 3. Copy the secure HTTPS URL generated by Ngrok
+#    Example: https://a1b2-34-56-78.ngrok-free.app
 
-# 4. Copy the HTTPS URL from ngrok output
-#    Example: https://abc123.ngrok-free.app
+# 4. Configure your Webhook URL on the Bolna Dashboard:
+#    https://a1b2-34-56-78.ngrok-free.app/api/webhook/bolna
 
-# 5. In Bolna dashboard, set webhook URL:
-#    https://abc123.ngrok-free.app/api/webhook/bolna
-
-# 6. Set webhook secret in Bolna and add to .env.local:
-#    BOLNA_WEBHOOK_SECRET=your-secret
+# 5. Make sure BOLNA_WEBHOOK_SECRET matches in your .env and Bolna dashboard settings
 ```
-
-For production, deploy to Vercel and use your production domain as the webhook URL.
 
 ---
 
-## CSV Format
+## 📡 API Reference Manual
 
-Upload a `.csv` file with these columns:
+CollectIQ exposes serverless backend endpoints designed to secure private keys, dispatch outbound phone calls safely, and handle inbound webhook event triggers.
+
+### 1. Dispatch Campaigns (`POST /api/calls`)
+Invoked by the front-end dashboard when a collection manager starts a draft campaign. Retrieves all call queue records associated with the campaign ID and dispatches requests to the Bolna calling APIs.
+* **Payload Format:**
+  ```json
+  {
+    "call_id": "461ad3de-f280-4483-9599-8132b1645754"
+  }
+  ```
+* **Success Response (200 OK):**
+  ```json
+  {
+    "success": true,
+    "bolna": {
+      "call_id": "bolna-call-uuid-12345",
+      "status": "queued"
+    }
+  }
+  ```
+
+### 2. Manual Call Trigger (`POST /api/trigger`)
+Directly dials a single borrower in real time. Typically used by collection supervisors to execute urgent escalations or verify call validity.
+* **Payload Format:**
+  ```json
+  {
+    "call_id": "call-record-uuid",
+    "borrower_name": "Rajesh Kumar",
+    "phone_number": "9876543210",
+    "overdue_amount": 45000,
+    "due_date": "2026-11-15",
+    "loan_account": "LN2024001",
+    "language": "hinglish"
+  }
+  ```
+
+### 3. Inbound Webhook Callback (`POST /api/webhook/bolna`)
+Standardized webhook hook called by the Bolna Engine when a call terminates. Validates the caller using the shared webhook secret, updates database states, records user outcomes, and ingests transcripts.
+* **Payload Format:**
+  ```json
+  {
+    "call_id": "bolna-call-uuid-12345",
+    "outcome": "PTP_CONFIRMED",
+    "transcript": "Agent: Namaste Rajesh ji, aapka ₹45,000 ka loan outstanding hai... Borrower: Haan haan main parso pay kar dunga...",
+    "summary": "Borrower promised to pay outstanding ₹45,000 on 2026-05-22.",
+    "ptp_amount": 45000,
+    "ptp_date": "2026-05-22",
+    "duration_seconds": 45
+  }
+  ```
+* **Success Response (200 OK):**
+  ```json
+  {
+    "success": true
+  }
+  ```
+
+---
+
+## 📈 Outcome Metrics & Standard Categorization
+
+The Bolna Voice AI categorizes conversation results based on user speech-to-text patterns:
+
+| Outcome Code | UI Label | Description | Action Trigger |
+|--------------|----------|-------------|----------------|
+| `ptp_confirmed` | **PTP Confirmed** | Borrower acknowledges delinquent dues and commits to pay on a specific date. | Updates due projection metrics; queues automated SMS/WhatsApp reminders. |
+| `disputed` | **Disputed** | Borrower claims to have already paid, disputes interest calculation, or denies loan. | Flags account as "Disputed" in DB; pauses calling loop; alerts credit compliance. |
+| `callback_requested` | **Callback** | Borrower asks to be called at another time (e.g. busy, driving, sleeping). | Reschedules dialer queue to user-preferred window. |
+| `escalate` | **Escalated** | Conversation highlights highly emotional speech, complex queries, or refusal to pay. | Transfers customer file to an experienced human collections specialist. |
+| `no_answer` | **No Answer** | Phone rings out completely, user busy, or mobile switched off. | Triggers cool-down period before adding to automatic retry queue. |
+| `failed` | **Failed** | Technical dialing error, network failure, or empty call state. | logs error event and cues immediate failover recovery. |
+
+---
+
+## 📋 CSV Upload Standard Formatting Guide
+
+The system features a fuzzy-matching processor that reads standard `.csv` files. You can utilize the template below to format uploads:
 
 ```csv
 name,phone,loan_account,overdue_amount,due_date,language,bucket
-Rajesh Kumar,9876543210,LN2024001,45000,2024-11-15,hindi,31-60
-Priya Sharma,9123456789,LN2024002,18500,2024-11-10,english,0-30
-Amit Patel,9988776655,LN2024003,125000,2024-10-28,hindi,61-90
-Sneha Gupta,9876512345,LN2024004,67000,2024-11-05,english,31-60
+Rajesh Kumar,9876543210,LN2024001,45000,2026-11-15,hindi,31-60
+Priya Sharma,9123456789,LN2024002,18500,2026-11-10,english,0-30
+Amit Patel,9988776655,LN2024003,125000,2026-10-28,hindi,61-90
+Sneha Gupta,9876512345,LN2024004,67000,2026-11-05,english,31-60
 ```
 
-| Column | Required | Description |
-|--------|----------|-------------|
-| `name` | Yes | Borrower full name |
-| `phone` | Yes | 10-digit mobile number |
-| `loan_account` | Yes | Internal loan/account ID |
-| `overdue_amount` | Yes | Overdue amount in ₹ |
-| `due_date` | Yes | Due date (YYYY-MM-DD) |
-| `language` | No | `hindi` or `english` (default: `hindi`) |
-| `bucket` | No | `0-30`, `31-60`, `61-90`, `90+` (default: `0-30`) |
-
-Column names are auto-detected. Alternative headers accepted (e.g., `borrower_name`, `mobile`, `outstanding`, etc.).
+> [!NOTE]
+> Column order does not matter. The fuzzy processor supports common naming conventions:
+> * **Name:** `name`, `borrower_name`, `customer_name`, `full_name`
+> * **Phone:** `phone`, `phone_number`, `mobile`, `contact`, `mobile_number`
+> * **Loan Account:** `loan_account`, `account_no`, `loan_id`, `account_id`
+> * **Overdue Amount:** `overdue_amount`, `amount`, `outstanding`, `due_amount`, `pending_amount`
+> * **Due Date:** `due_date`, `payment_date`, `date_due`, `expected_date`
 
 ---
 
-## Outcome Metrics Explained
+## 🔮 Next Phase Roadmap
 
-| Metric | Definition |
-|--------|------------|
-| **PTP Rate** | Promise-to-Pay Rate — % of completed calls where the borrower committed to pay. Calculated as: `PTP Confirmed / Completed Calls × 100` |
-| **Connect Rate** | % of dialed calls that were successfully answered and completed. Calculated as: `Completed Calls / Total Dialed × 100` |
-| **Total PTP Amount** | Sum of all rupee amounts that borrowers promised to pay. Displayed in ₹ L (Lakhs) or ₹ Cr (Crores) |
-| **Cost per PTP** | (Not yet tracked) Will be: `Total campaign cost / Number of PTPs confirmed` |
-
-**Outcomes:**
-- `ptp_confirmed` — Borrower promised to pay on a specific date
-- `disputed` — Borrower disputes the dues
-- `callback_requested` — Borrower asked for a callback
-- `escalate` — Call needs human agent follow-up
-- `no_answer` — Call not answered
-- `failed` — Technical failure
+- **🛡️ RBI-Compliant Audit Ledger:** Implement immutable, cryptographically verifiable logs documenting every single agent-borrower phone interaction, tracking caller consent, talk time, and outcome markers. Exports regulatory-compliant PDFs for RBI compliance inspections (incorporating 7-year records preservation policies).
+- **🔁 Automatic Multi-Dial Retry Engine:** Configurable retry schedules (maximum 3 calls with exponential backoff thresholds) restricting dials to regulatory-compliant hours (e.g., 9:00 AM – 7:00 PM).
+- **💬 Auto-Generated WhatsApp Confirmations:** Triggers customized WhatsApp messages containing official payment gateways and receipt confirmations immediately following a successful Promise-to-Pay (PTP) call.
 
 ---
 
-## Week 2 Roadmap
+## 📄 License
 
-- **Automatic retry logic** — Retry failed/no-answer calls up to 3 times with exponential backoff; configurable retry windows (e.g., only retry between 10 AM - 6 PM)
-- **WhatsApp follow-up after PTP** — Send automated WhatsApp message to borrower confirming PTP date and payment link; reduces missed PTPs by ~25%
-- **RBI compliance audit log** — Immutable log of all agent-borrower interactions with consent timestamps; exportable PDF for regulatory audits; 7-year retention
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Framework | React 19 + TypeScript + Vite |
-| Styling | Tailwind CSS v3 |
-| Database | Supabase (PostgreSQL + Realtime) |
-| Auth | Supabase Auth |
-| File Parsing | PapaParse (CSV) |
-| Charts | Recharts |
-| HTTP | Native fetch |
-| Icons | Lucide React |
-| Fonts | IBM Plex Mono (data) + DM Sans (UI) |
-
----
-
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `VITE_SUPABASE_URL` | Your Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anon/public key |
-| `VITE_BOLNA_API_KEY` | Bolna API key for initiating calls |
-| `VITE_BOLNA_AGENT_ID` | Bolna voice agent ID |
-| `VITE_BOLNA_WEBHOOK_SECRET` | Shared secret for webhook validation |
-
----
-
-## File Structure
-
-```
-├── supabase/
-│   └── schema.sql              # Database schema + policies + realtime
-├── .env.local.example          # Environment variable template
-├── src/
-│   ├── App.tsx                 # Root layout + routing
-│   ├── main.tsx                # Entry point
-│   ├── index.css               # Global styles + design system
-│   ├── types/
-│   │   └── index.ts            # TypeScript types
-│   ├── lib/
-│   │   ├── utils.ts            # formatINR, formatDuration, etc.
-│   │   ├── supabase.ts         # Supabase client + CRUD
-│   │   └── bolna.ts            # Bolna API wrapper
-│   ├── components/
-│   │   ├── ui/
-│   │   │   ├── Sidebar.tsx     # Navigation sidebar
-│   │   │   ├── MetricCard.tsx  # KPI card with counter animation
-│   │   │   ├── StatusChip.tsx  # Status badge with pulse dot
-│   │   │   ├── CallTable.tsx   # Data table with hover states
-│   │   │   ├── UploadZone.tsx  # Drag-drop file upload
-│   │   │   └── Sparkline.tsx   # Mini sparkline chart
-│   │   └── charts/
-│   │       ├── OutcomeDonut.tsx # Donut chart for outcomes
-│   │       └── CallVolumeBar.tsx # Bar chart for hourly volume
-│   └── pages/
-│       ├── DashboardPage.tsx   # Main dashboard
-│       ├── CampaignsPage.tsx   # Campaign list
-│       ├── CampaignDetailPage.tsx # Campaign detail + call queue
-│       ├── UploadPage.tsx      # CSV upload + preview
-│       ├── CallDetailPage.tsx  # Single call transcript
-│       └── AnalyticsPage.tsx   # Analytics view
-└── README.md
-```
-
----
-
-## License
-
-Private — internal use only.
+CollectIQ is **Private Proprietary Software**. All rights reserved. Unauthorized copying, distribution, or reproduction of code files is strictly prohibited.
