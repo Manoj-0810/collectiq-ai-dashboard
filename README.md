@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="app/public/logo.svg" alt="CollectIQ Logo" width="72" height="72" />
-
-# CollectIQ
+# 📞 CollectIQ
 
 ### AI-Powered Voice Collections Dashboard for Modern Lenders
 
@@ -468,6 +466,6 @@ All rights reserved. © 2026 CollectIQ. Unauthorized copying, distribution, modi
 
 Built with precision for the collections teams that move fast and recover faster.
 
-**[⬆ Back to top](#collectiq)**
+**[⬆ Back to top](#-collectiq)**
 
 </div>
