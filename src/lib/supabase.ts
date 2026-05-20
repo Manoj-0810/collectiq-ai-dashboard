@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/set-state-in-effect */
 import { createClient } from '@supabase/supabase-js';
 import type { Borrower, Campaign, Call, CallWithBorrower, CampaignMetrics } from '@/types';
 

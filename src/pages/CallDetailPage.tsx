@@ -4,9 +4,6 @@ import {
   ArrowLeft,
   Phone,
   User,
-  Clock,
-  FileText,
-  Hash,
   PhoneCall,
 } from 'lucide-react';
 
@@ -17,12 +14,7 @@ import { StatusChip } from '@/components/ui/StatusChip';
 import {
   formatINR,
   formatPhone,
-  formatDuration,
-  formatDateTime,
   formatDate,
-  outcomeLabel,
-  bucketLabel,
-  parseTranscript,
 } from '@/lib/utils';
 
 import type { CallWithBorrower } from '@/types';
@@ -121,10 +113,6 @@ export function CallDetailPage() {
       setTriggering(false);
     }
   };
-  const transcript = call?.transcript
-    ? parseTranscript(call.transcript)
-    : [];
-
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto space-y-6">

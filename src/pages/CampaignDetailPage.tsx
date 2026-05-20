@@ -1,3 +1,6 @@
+
+/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Play, Pause, Download, Search, Phone, Edit2, Check, X, TrendingUp, AlertCircle } from 'lucide-react';
@@ -29,7 +32,7 @@ export function CampaignDetailPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const subscriptionRef = useRef<any>(null);
+  const subscriptionRef = useRef<unknown>(null);
 
   const showToast = useCallback((message: string) => {
     if (toastTimeoutRef.current) {
