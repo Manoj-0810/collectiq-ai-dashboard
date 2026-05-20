@@ -85,14 +85,19 @@ import type {
   
             recipient_phone_number: `+91${call.phone_number}`,
   
+            
             user_data: {
-              customer_name:
+              borrower_name:
                 call.borrower_name,
+            
               loan_account:
                 call.loan_account,
-                overdue_amount: `₹${Number(
-                  call.overdue_amount
-                ).toLocaleString('en-IN')}`,
+            
+              overdue_amount: `₹${Number(
+                call.overdue_amount
+              ).toLocaleString('en-IN')}`,
+            
+              due_date: call.due_date,
             },
           }),
         }
