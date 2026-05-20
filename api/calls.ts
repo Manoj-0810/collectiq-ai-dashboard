@@ -90,8 +90,9 @@ import type {
                 call.borrower_name,
               loan_account:
                 call.loan_account,
-              overdue_amount:
-                call.overdue_amount,
+                overdue_amount: `₹${Number(
+                  call.overdue_amount
+                ).toLocaleString('en-IN')}`,
             },
           }),
         }
