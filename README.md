@@ -15,16 +15,20 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Realtime_DB-3ECF8E.svg?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Serverless-000000.svg?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com/)
 [![Bolna AI](https://img.shields.io/badge/Bolna_AI-Voice_Agents-F97316.svg?style=flat-square)](https://bolna.ai/)
+[![Walkthrough](https://img.shields.io/badge/▶_Watch-Product_Walkthrough-625DF5.svg?style=flat-square&logo=loom&logoColor=white)](https://www.loom.com/share/2d162965e6d246518bcb839d88421631)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg?style=flat-square)](#license)
 
 <br/>
 
-[Overview](#overview) · [Architecture](#architecture) · [Features](#features) · [Tech Stack](#tech-stack) · [Database Schema](#database-schema) · [API Reference](#api-reference) · [Setup](#setup) · [Roadmap](#roadmap)
+[Overview](#overview) · [Architecture](#architecture) · [Features](#features) · [Tech Stack](#tech-stack) · [Database Schema](#database-schema) · [API Reference](#api-reference) · [Setup](#setup) · [Roadmap](#roadmap) · [🎥 Walkthrough](https://www.loom.com/share/2d162965e6d246518bcb839d88421631)
 
 <br/>
 
 ![CollectIQ Dashboard Preview](dashboard_preview.png)
 *Live operations control center — real-time dialing metrics, campaign management, hourly call volume, and outcome streams.*
+
+**🎥 [Watch the product walkthrough →](https://www.loom.com/share/2d162965e6d246518bcb839d88421631)**
+*A guided tour of campaign creation, live call telemetry, and transcript review — end to end in a few minutes.*
 
 </div>
 
@@ -75,6 +79,8 @@ graph TD
     style G fill:#6366F1,stroke:#333,stroke-width:2px,color:#fff
 ```
 
+**Design principle:** no leg of this pipeline polls. Campaign dispatch is event-triggered, outcome ingestion is webhook-driven, and UI updates ride PostgreSQL's write-ahead log directly to the browser — so the dashboard reflects reality within milliseconds of a call ending, not on the next refresh cycle.
+
 ### End-to-End Lifecycle
 
 | Step | Actor | Action |
@@ -90,38 +96,44 @@ graph TD
 
 ## Features
 
-<details>
+<details open>
 <summary><strong>🚀 Live Campaign Control Center</strong></summary>
+<br/>
 
 Launch, pause, and monitor automated outbound voice campaigns in real time. Visual status chips reflect the campaign state machine (`draft → running → paused → completed`) with instant UI transitions backed by Supabase Realtime.
 </details>
 
 <details>
 <summary><strong>📊 Real-Time Operations Dashboard</strong></summary>
+<br/>
 
 Live-ticking KPI cards for PTP Rate, Connection Rate, Total PTP Amount, and Call Volume. Hourly call volume bar charts and outcome distribution pie charts update in real time via WebSocket deltas — no refresh required.
 </details>
 
 <details>
 <summary><strong>💬 Conversational Deep-Dives</strong></summary>
+<br/>
 
 Full speech-to-text transcript viewer for every completed call. Structural markers highlight PTP agreements, disputes, escalation triggers, and callback requests. AI-generated summaries and sentiment scores (`cooperative / neutral / frustrated`) are surfaced alongside raw dialogue.
 </details>
 
 <details>
 <summary><strong>📁 Smart CSV Importer</strong></summary>
+<br/>
 
 Drag-and-drop upload zone with a fuzzy column-matching engine. Automatically maps non-standard headers (`mobile`, `contact`, `borrower_name`, etc.) to the canonical schema. Renders a structured preview table before ingestion so managers can validate data before committing.
 </details>
 
 <details>
 <summary><strong>🌐 Multilingual Voice Scripts</strong></summary>
+<br/>
 
 Bolna AI agents execute collection scripts in **English**, **Hindi**, and **Hinglish** — selectable per borrower row in the CSV. Language context is injected at call dispatch time.
 </details>
 
 <details>
 <summary><strong>🎨 Premium Dark-Mode UI</strong></summary>
+<br/>
 
 Glassmorphism panels, emerald-and-violet accent palette, custom Recharts visualizations, and smooth CSS animations. Typography uses *Outfit* for headings and *Fira Code* for telemetry numerics.
 </details>
@@ -466,6 +478,6 @@ All rights reserved. © 2026 CollectIQ. Unauthorized copying, distribution, modi
 
 Built with precision for the collections teams that move fast and recover faster.
 
-**[⬆ Back to top](#-collectiq)**
+**[🎥 Watch the walkthrough](https://www.loom.com/share/2d162965e6d246518bcb839d88421631)** · **[⬆ Back to top](#-collectiq)**
 
 </div>
